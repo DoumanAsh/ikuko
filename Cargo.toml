@@ -1,0 +1,18 @@
+[package]
+name = "ikuko"
+version = "0.1.0"
+authors = ["Douman <douman@gmx.se>"]
+edition = "2018"
+description = "Simple static file server"
+license = "Apache-2.0"
+readme = "README.md"
+include = [
+    "**/*.rs",
+    "Cargo.toml",
+    "README.md"
+]
+
+[dependencies]
+hyper = "0.12"
+http-fs = { version = "0.5", features = ["hyper"] }
+futures = "0.1"
