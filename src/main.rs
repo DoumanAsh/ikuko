@@ -62,7 +62,7 @@ fn run() -> Result<(), i32> {
 
     let server = server.serve(static_files).map_err(|e| eprintln!("server error: {}", e));
 
-    println!("Listening on http://{}", addr);
+    println!("Listening on http://localhost:{}", addr.port());
     hyper::rt::run(server);
 
     Ok(())
