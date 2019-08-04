@@ -16,3 +16,8 @@ include = [
 hyper = "0.12"
 http-fs = { version = "0.5", features = ["hyper"] }
 futures = "0.1"
+
+[profile.release]
+lto = true
+opt-level = "z"
+codegen-units = 1
