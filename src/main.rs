@@ -42,7 +42,7 @@ fn run() -> Result<(), i32> {
     let mut port = args.port;
 
     let (addr, server) = loop {
-        let addr = ([127, 0, 0, 1], port).into();
+        let addr = ([0, 0, 0, 0], port).into();
 
         let server = match hyper::Server::try_bind(&addr) {
             Ok(server) => server,
