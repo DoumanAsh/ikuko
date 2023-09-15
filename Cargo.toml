@@ -1,6 +1,6 @@
 [package]
 name = "ikuko"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Douman <douman@gmx.se>"]
 edition = "2018"
 description = "Simple static file server"
@@ -12,12 +12,26 @@ include = [
     "README.md"
 ]
 
-[dependencies]
-hyper = "0.12"
-http-fs = { version = "0.5", features = ["hyper"] }
-futures = "0.1"
+[dependencies.arg]
+version = "0.4"
+
+[dependencies.c-main]
+version = "1"
+
+[dependencies.http-fs]
+version = "2.0.0-alpha.1"
+features = ["tokio", "hyper"]
+
+[dependencies.hyper]
+version = "1.0.0-rc.4"
+features = ["http1", "server"]
+
+[dependencies.tokio]
+version = "1"
+features = ["rt", "net"]
 
 [profile.release]
+strip = true
 lto = true
 opt-level = "z"
 codegen-units = 1
