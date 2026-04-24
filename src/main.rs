@@ -14,12 +14,14 @@ mod io;
 #[derive(Clone)]
 pub struct DirectoryConfig {
     dir: Option<PathBuf>,
+    dev_cors: bool,
 }
 
 impl DirectoryConfig {
-    fn new(dir: Option<PathBuf>) -> Self {
+    fn new(dir: Option<PathBuf>, dev_cors: bool) -> Self {
         Self {
             dir,
+            dev_cors
         }
     }
 }
@@ -38,6 +40,25 @@ impl StaticFileConfig for DirectoryConfig {
     fn handle_directory(&self, _path: &Path) -> bool {
         true
     }
+
+    fn on_response(&self, parts: &mut http_fs::http::response::Parts) {
+        use http_fs::http;
+
+        const TRUE: http::HeaderValue = http::HeaderValue::from_static("true");
+        const WILDCARD: http::HeaderValue = http::HeaderValue::from_static("*");
+
+        if self.dev_cors {
+            use http::header::ACCESS_CONTROL_ALLOW_ORIGIN;
+            use http::header::ACCESS_CONTROL_ALLOW_HEADERS;
+            use http::header::ACCESS_CONTROL_ALLOW_METHODS;
+            use http::header::ACCESS_CONTROL_ALLOW_CREDENTIALS;
+
+            parts.headers.insert(ACCESS_CONTROL_ALLOW_ORIGIN, WILDCARD);
+            parts.headers.insert(ACCESS_CONTROL_ALLOW_METHODS, WILDCARD);
+            parts.headers.insert(ACCESS_CONTROL_ALLOW_HEADERS, WILDCARD);
+            parts.headers.insert(ACCESS_CONTROL_ALLOW_CREDENTIALS, TRUE);
+        }
+    }
 }
 
 async fn listen(mut port : u16) -> (net::SocketAddr, TcpListener) {
@@ -49,7 +70,7 @@ async fn listen(mut port : u16) -> (net::SocketAddr, TcpListener) {
             Err(error) => {
                 eprintln!("{addr}: Cannot bind: {error}");
                 port = match port.wrapping_sub(1) {
-                    0 => core::u16::MAX,
+                    0 => u16::MAX,
                     port => port,
                 };
                 continue
@@ -61,6 +82,7 @@ async fn listen(mut port : u16) -> (net::SocketAddr, TcpListener) {
 }
 
 #[derive(Debug, Args)]
+#[arg(infer_name)]
 ///Static file server
 pub struct Cli {
     #[arg(long, short, default_value = "8080")]
@@ -68,10 +90,13 @@ pub struct Cli {
     pub port: u16,
     ///Optionally specifies directory to server. By default is current directory.
     pub path: Option<PathBuf>,
+    ///Specifies to allow CORS from any origin
+    #[arg(long, default_value = "false")]
+    pub dev_cors: bool
 }
 
-async fn serve(listener: TcpListener, path: Option<PathBuf>) {
-    let static_files = StaticFiles::new(TokioWorker, DirectoryConfig::new(path));
+async fn serve(listener: TcpListener, path: Option<PathBuf>, dev_cors: bool) {
+    let static_files = StaticFiles::new(TokioWorker, DirectoryConfig::new(path, dev_cors));
     loop {
         let (stream, _) = match listener.accept().await {
             Ok(result) => result,
@@ -102,7 +127,7 @@ fn run(args: Cli) -> Result<(), isize> {
     let (addr, listener) = tokio.block_on(listen(args.port));
     println!("Listening on http://{}", addr);
 
-    tokio.block_on(serve(listener, args.path));
+    tokio.block_on(serve(listener, args.path, args.dev_cors));
     Ok(())
 }
 
