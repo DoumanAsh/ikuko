@@ -37,6 +37,10 @@ impl StaticFileConfig for DirectoryConfig {
         }
     }
 
+    fn index_file(&self, _path: &Path) -> Option<&Path> {
+        Some(Path::new("index.html"))
+    }
+
     fn handle_directory(&self, _path: &Path) -> bool {
         true
     }
