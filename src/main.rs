@@ -8,6 +8,7 @@ use hyper::server::conn::http1;
 
 use std::net;
 use std::path::{Path, PathBuf};
+use std::borrow::Cow;
 
 mod io;
 
@@ -15,13 +16,15 @@ mod io;
 pub struct DirectoryConfig {
     dir: Option<PathBuf>,
     dev_cors: bool,
+    index_file: Option<Cow<'static, str>>
 }
 
 impl DirectoryConfig {
-    fn new(dir: Option<PathBuf>, dev_cors: bool) -> Self {
+    fn new(dir: Option<PathBuf>, dev_cors: bool, index_file: Option<Cow<'static, str>>) -> Self {
         Self {
             dir,
-            dev_cors
+            dev_cors,
+            index_file,
         }
     }
 }
@@ -38,7 +41,11 @@ impl StaticFileConfig for DirectoryConfig {
     }
 
     fn index_file(&self, _path: &Path) -> Option<&Path> {
-        Some(Path::new("index.html"))
+        if let Some(index_file) = self.index_file.as_ref() {
+            Some(Path::new(index_file.as_ref()))
+        } else {
+            None
+        }
     }
 
     fn handle_directory(&self, _path: &Path) -> bool {
@@ -96,11 +103,20 @@ pub struct Cli {
     pub path: Option<PathBuf>,
     ///Specifies to allow CORS from any origin
     #[arg(long, default_value = "false")]
-    pub dev_cors: bool
+    pub dev_cors: bool,
+    #[arg(long, default_value = "false")]
+    ///Enables use of `index.html` instead of directory listing when hitting directory
+    pub auto_index: bool,
 }
 
-async fn serve(listener: TcpListener, path: Option<PathBuf>, dev_cors: bool) {
-    let static_files = StaticFiles::new(TokioWorker, DirectoryConfig::new(path, dev_cors));
+async fn serve(listener: TcpListener, Cli { path, dev_cors, auto_index, .. }: Cli) {
+    let index_file = if auto_index {
+        Some("index.html".into())
+    } else {
+        None
+    };
+
+    let static_files = StaticFiles::new(TokioWorker, DirectoryConfig::new(path, dev_cors, index_file));
     loop {
         let (stream, _) = match listener.accept().await {
             Ok(result) => result,
@@ -131,7 +147,7 @@ fn run(args: Cli) -> Result<(), isize> {
     let (addr, listener) = tokio.block_on(listen(args.port));
     println!("Listening on http://{}", addr);
 
-    tokio.block_on(serve(listener, args.path, args.dev_cors));
+    tokio.block_on(serve(listener, args));
     Ok(())
 }
 
